@@ -34,11 +34,8 @@ while True:
     opening = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations = 4)
     
     
-    _, cnts, _ = cv2.findContours(opening.copy(), cv2.RETR_EXTERNAL,
-                                  cv2.CHAIN_APPROX_SIMPLE)
-    
-    
-    
+    _, cnts, _ = cv2.findContours(opening.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+
     # loop over the contours
     for c in cnts:
         # compute the center of the contour
@@ -61,7 +58,7 @@ while True:
     cv2.putText(frame,"FPS:" + str(fps) + " Center:"+str(cX)+
     ','+str(cY), (10, 80), font, 1, (255,255,255), 1)
     cv2.imshow("Original Image", frame)
-    cv2.imshow("Processed Image", opening)
+    #cv2.imshow("Processed Image", opening)
     
     key = cv2.waitKey(10)
     if key == 27:
