@@ -12,14 +12,17 @@ npzfile = np.load(path)
 mtx = npzfile[npzfile.files[0]]
 #Distortion Matrix
 dist = npzfile[npzfile.files[1]]
+rvec = npzfile[npzfile.files[2]]
+tve = npzfile[npzfile.files[3]]
 print(mtx ,dist)
 
 #Font setup
 font = cv.FONT_HERSHEY_PLAIN
 start_time = time.time()
 
-objpoints = np.array([[0, 0, 0.6], [0.245, 0, 0.6], [-0.245, 0, 0.6],
-                     [0, 0.245, 0.6], [0, -0.245, 0.6]], dtype=np.float32)
+objpoints = np.array([[0, 0, 0], [0.0255, 0, 0], [-0.0255, 0, 0],[0, 0.0255, 0], [0, -0.0255, 0],
+                      [0, 0.0755, 0], [0.0255, 0.0755, 0], [-0.0255, 0.0755, 0], [0, 0.05, 0], [0, 0.101, 0],
+                      [0.1055, 0, 0], [0.131, 0, 0], [0.08, 0, 0], [0.1055, 0.0255, 0], [0.1055, -0.0255, 0]], dtype=np.float32)
 
 # def nothing(x):
 #     pass
@@ -42,20 +45,20 @@ def detect_contourn(image, color):
 
     if color == "Red":
         #Define the limits in HSV variables
-        lower = np.array([0, 70, 107])
-        upper = np.array([19, 255, 255])
+        lower = np.array([0, 40, 216])
+        upper = np.array([20, 255, 255])
     if color == "Green":
         #Define the limits in HSV variables
-        self.lower = np.array([48, 35, 225])
-        self.upper = np.array([65, 255, 255])
+        lower = np.array([30, 25, 172])
+        upper = np.array([80, 255, 255])
     if color == "Blue":
         #Define the limits in HSV variables
-        self.lower = np.array([70, 35, 225])
-        self.upper = np.array([120, 255, 255])
+        lower = np.array([59, 69, 148])
+        upper = np.array([157, 236, 255])
     if color == "Yellow":
         #Define the limits in HSV variables
-        self.lower = np.array([20, 100, 100])
-        self.upper = np.array([32, 220, 255])
+        lower = np.array([20, 100, 100])
+        upper = np.array([32, 220, 255])
 
     # l_h = cv.getTrackbarPos("L - H", "Trackbars")
     # l_s = cv.getTrackbarPos("L - S", "Trackbars")
@@ -73,8 +76,9 @@ def detect_contourn(image, color):
     #Create a kernel
     kernel = np.ones((5,5), np.uint8)
     #Apply opening process
-    opening = cv.morphologyEx(mask, cv.MORPH_OPEN, kernel, iterations = 1)
-    # cv.imshow("Opening", opening)
+    opening = cv.morphologyEx(mask, cv.MORPH_OPEN, kernel, iterations = 5)
+    # output = cv.bitwise_and(image, image, mask=opening)
+    # cv.imshow("Opening", output)
     #Find BLOB's contours
     cnts, _ = cv.findContours(opening.copy(), cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE)
 
@@ -84,10 +88,10 @@ def center_mass_calculate(image, c):
 
     # Compute the center of the contour
     M = cv.moments(c)
-    cX = int(M["m10"] / M["m00"])
-    cY = int(M["m01"] / M["m00"])
+    # cX = int(M["m10"] / M["m00"])
+    # cY = int(M["m01"] / M["m00"])
 
-    _, radius = cv.minEnclosingCircle(c)
+    (cX, cY), radius = cv.minEnclosingCircle(c)
     cX = int(cX)
     cY = int(cY)
     center = (cX, cY)
@@ -98,7 +102,7 @@ def center_mass_calculate(image, c):
     if metric > 0.8:
         #Draw the contour and center of the shape on the image
         # cv.drawContours(image, [c], -1, (0, 0, 0), 1)
-        cv.circle(image, center, radius, (0, 0, 0),1)
+        cv.circle(image, center, radius, (0, 0, 0), 1)
         cv.circle(image, center, 1, (0, 0, 0), -1)
 
                           
@@ -138,17 +142,17 @@ def get_transform_frame(f1, f2):
     matrix = np.zeros((3,4))
     for i in range(3):
         for j in range(3):
-            matrix[i, j] = self.get_element_vector(f1, f2, i, j)
-            matrix[i, 3] = self.get_element_last(f2, i)
+            matrix[i, j] = get_element_vector(f1, f2, i, j)
+            matrix[i, 3] = get_element_last(f2, i)
 
     A = np.zeros((4,4))
     for i in range(3):
         for j in range(3):
-            A[i, j] = self.get_element_A(f1, i, j)
+            A[i, j] = get_element_A(f1, i, j)
 
     for i in range(3):
-        A[i,3] = self.get_element_last(f1, i)
-        A[3, i] = self.get_element_last(f1, i)
+        A[i,3] = get_element_last(f1, i)
+        A[3, i] = get_element_last(f1, i)
 
     A[3,3] = np.shape(f1)[0]
     A_inv = np.linalg.inv(A)
@@ -164,10 +168,10 @@ def get_transform_frame(f1, f2):
 
 def get_pose(image, objpoints, imgpoints, mtx, dist):
         
-    axis = np.float32([[1, 0, 0], [0, 1, 0], [0, 0, 1]]).reshape(-1,3)
+    axis = np.float32([[.05, 0, 0], [0, .05, 0], [0, 0, .05]]).reshape(-1,3)
 
     # Find the rotation and translation vectors.
-    _, rvecs, tvecs,_ = cv.solvePnPRansac(objpoints, imgpoints, mtx, dist, iterationsCount=5)
+    _, rvecs, tvecs, _ = cv.solvePnPRansac(objpoints, imgpoints, mtx, dist, iterationsCount=5)
     # project 3D points to image plane
     imgpts, jac = cv.projectPoints(axis, rvecs, tvecs, mtx, dist)
     imgpts = imgpts.astype(np.int)
@@ -179,17 +183,27 @@ def get_pose(image, objpoints, imgpoints, mtx, dist):
 
 #Camera instance with thread
 cap = WebcamVideoStream(src=0).start()
+
 frame_id = 0
 
 #Image constants
 cX1 = 0
 cY1 = 0
 r1 = 0
+cX2 = 0
+cY2 = 0
+r2 = 0
+cX3 = 0
+cY3 = 0
+r3 = 0
 
 #Transformation frame constants
 obj_frame = []
 ground_frame = []
 distances = []
+cX1_med = []
+cY1_med = []
+r1_med = []
 T_flag = False
 
 
@@ -199,31 +213,41 @@ while True:
 
     #Get the circle's contourn based on it color
     cnts_red = detect_contourn(img, "Red")
+    cnts_green = detect_contourn(img, "Green")
+    cnts_blue = detect_contourn(img, "Blue")
 
     #Get the center point of the detected circle
     for c in cnts_red:
         cX1, cY1, r1 = center_mass_calculate(img, c)
+    for c in cnts_green:
+        cX2, cY2, r2 = center_mass_calculate(img, c)
+    for c in cnts_blue:
+        cX3, cY3, r3 = center_mass_calculate(img, c)
+
     
     #Set the image points
-    imgpoints = imgpoints = np.array([[cX1, cY1], [cX1+r1, cY1], [cX1-r1, cY1], [cX1, cY1+r1], [cX1, cY1-r1]], dtype = np.float32)
+    imgpoints = np.array([[cX1, cY1], [cX1+r1, cY1], [cX1-r1, cY1], [cX1, cY1+r1], [cX1, cY1-r1],
+                         [cX2, cY2], [cX2+r2, cY2], [cX2-r2, cY2], [cX2, cY2+r2], [cX2, cY2-r2],
+                         [cX3, cY3], [cX3+r3, cY3], [cX3-r3, cY3], [cX3, cY3+r3], [cX3, cY3-r3]], dtype = np.float32)
 
-    #Set Frame Transformation parameters
+    # Set Frame Transformation parameters
     if cX1 != 0 and cY1 != 0:
         global R_matrix
 
         #Get the extrinsics parameters
         rvecs, tvecs, R_matrix, image = get_pose(img, objpoints, imgpoints, mtx, dist)
         tvec = np.concatenate((tvecs, np.ones((1,1))), axis=0)
+        print("Tvec:", tvec)
 
-        # #List containing object frame points
-        # obj_pos = np.reshape(tvecs, (1,3))
-        # obj_pos = np.asarray(obj_pos, np.float32)
-        # obj_frame.append(obj_pos)
+        #List containing object frame points
+        obj_pos = np.reshape(tvecs, (1,3))
+        obj_pos = np.asarray(obj_pos, np.float32)
+        obj_frame.append(obj_pos)
 
-        # #List containing ground frame points (SENSOR)
-        # ground_pos = np.reshape(quad_pos, (1,3))
-        # ground_pos = np.asarray(ground_pos, np.float32)
-        # ground_frame.append(ground_pos)
+        #List containing ground frame points (SENSOR)
+        ground_pos = np.zeros((1,3))
+        ground_pos = np.asarray(ground_pos, np.float32)
+        ground_frame.append(ground_pos)
 
         # #Euler angles from quadrotor (SENSOR - IMU)
         # quad_rot = quad_position.env.mat_rot
@@ -240,37 +264,40 @@ while True:
         print("Roll:",phi_est," Pitch:",theta_est," Yaw:",psi_est)
         # print("Matriz Rotação Original:", quad_rot)
         print("Matriz Rotação Estimada:", R_matrix)
+        cv.putText(img, "Roll:"+str(round(phi_est, 2)), (50,440), font, 1, (255,255,255), 2)
+        cv.putText(img, "Pitch:"+str(round(theta_est, 2)), (200,440), font, 1, (255,255,255), 2)
+        cv.putText(img, "Yaw:"+str(round(psi_est, 2)), (350,440), font, 1, (255,255,255), 2)
 
     #Evaluate transformation matrix beetween object frame and ground frame
-    # if len(obj_frame)==1 and len(ground_frame)==1:
-    #     global T
+    if len(obj_frame)==10 and len(ground_frame)==10:
+        global T
 
-    #     obj_frame = np.asarray(obj_frame, np.float32).reshape(1,3)
-    #     ground_frame = np.asarray(ground_frame, np.float32).reshape(1,3)
+        obj_frame = np.asarray(obj_frame, np.float32).reshape(10,3)
+        ground_frame = np.asarray(ground_frame, np.float32).reshape(10,3)
 
-    #     T = get_transform_frame(obj_frame, ground_frame)
-    #     T_flag = True
-    #     obj_frame = []
-    #     ground_frame = []
+        T = get_transform_frame(obj_frame, ground_frame)
+        T_flag = True
+        obj_frame = []
+        ground_frame = []
 
    
 
-    #     if self.T_flag:
-    #         real_pos = np.dot(T, tvec)
-    #         erro_X = self.quad_position.env.state[0] - real_pos[0]
-    #         erro_Y = self.quad_position.env.state[2] - real_pos[1]
-    #         erro_Z = self.quad_position.env.state[4] - real_pos[2]
-    #         print("Ground Frame:", self.quad_position.env.state[0:5:2])
-    #         print("Real Frame:", np.transpose(real_pos)[:,:3])
-    #         # print("E_X:",erro_X," E_Y:",erro_Y," E_Y:", erro_Z)
-    #         self.T_flag = False
+        if T_flag:
+            real_pos = np.dot(T, tvec)
+            # erro_X = quad_position.env.state[0] - real_pos[0]
+            # erro_Y = quad_position.env.state[2] - real_pos[1]
+            # erro_Z = quad_position.env.state[4] - real_pos[2]
+            print("Ground Frame:", ground_pos)
+            print("Real Frame:", np.transpose(real_pos)[:,:3])
+            # print("E_X:",erro_X," E_Y:",erro_Y," E_Y:", erro_Z)
+            T_flag = False
 
 
-        # Print the image coordinates on the screen
-        cv.putText(image," Center:"+str(cX1)+','+str(cY1), (10, 10), font, 1, (255,0,0), 1)
-        # cv.putText(image," Center:"+str(cX2)+','+str(cY2), (10, 25), font, 1, (0,255,0), 1)
-        # cv.putText(image," Center:"+str(cX3)+','+str(cY3), (10, 40), font, 1, (0,0,255), 1)
-        # cv.putText(image," Center:"+str(cX4)+','+str(cY4), (10, 55), font, 1, (0,255,255), 1)
+    # Print the image coordinates on the screen
+    cv.putText(img," Center:"+str(cX1)+','+str(cY1), (10, 10), font, 1, (255,0,0), 1)
+    cv.putText(img," Center:"+str(cX2)+','+str(cY2), (10, 25), font, 1, (0,255,0), 1)
+    cv.putText(img," Center:"+str(cX3)+','+str(cY3), (10, 40), font, 1, (0,0,255), 1)
+    # cv.putText(image," Center:"+str(cX4)+','+str(cY4), (10, 55), font, 1, (0,255,255), 1)
 
     #Compute FPS
     elapsed_time = time.time() - start_time
