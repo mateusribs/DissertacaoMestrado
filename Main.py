@@ -24,19 +24,19 @@ objpoints = np.array([[0, 0, 0], [0.0255, 0, 0], [-0.0255, 0, 0],[0, 0.0255, 0],
                       [0, 0.0755, 0], [0.0255, 0.0755, 0], [-0.0255, 0.0755, 0], [0, 0.05, 0], [0, 0.101, 0],
                       [0.1055, 0, 0], [0.131, 0, 0], [0.08, 0, 0], [0.1055, 0.0255, 0], [0.1055, -0.0255, 0]], dtype=np.float32)
 
-# def nothing(x):
-#     pass
+def nothing(x):
+    pass
 
-# #Criar janela para trackbar
-# cv.namedWindow("Trackbars")
+#Criar janela para trackbar
+cv.namedWindow("Trackbars")
 
-# #Criar trackbars
-# cv.createTrackbar("L - H", "Trackbars", 0, 179, nothing)
-# cv.createTrackbar("L - S", "Trackbars", 0, 255, nothing)
-# cv.createTrackbar("L - V", "Trackbars", 0, 255, nothing)
-# cv.createTrackbar("U - H", "Trackbars", 179, 179, nothing)
-# cv.createTrackbar("U - S", "Trackbars", 255, 255, nothing)
-# cv.createTrackbar("U - V", "Trackbars", 255, 255, nothing)
+#Criar trackbars
+cv.createTrackbar("L - H", "Trackbars", 0, 179, nothing)
+cv.createTrackbar("L - S", "Trackbars", 0, 255, nothing)
+cv.createTrackbar("L - V", "Trackbars", 0, 255, nothing)
+cv.createTrackbar("U - H", "Trackbars", 179, 179, nothing)
+cv.createTrackbar("U - S", "Trackbars", 255, 255, nothing)
+cv.createTrackbar("U - V", "Trackbars", 255, 255, nothing)
 
 
 def detect_contourn(image, color):
@@ -45,30 +45,30 @@ def detect_contourn(image, color):
 
     if color == "Red":
         #Define the limits in HSV variables
-        lower = np.array([0, 40, 216])
+        lower = np.array([0, 127, 62])
         upper = np.array([20, 255, 255])
     if color == "Green":
         #Define the limits in HSV variables
-        lower = np.array([30, 25, 172])
-        upper = np.array([80, 255, 255])
+        lower = np.array([30, 44, 67])
+        upper = np.array([91, 255, 255])
     if color == "Blue":
         #Define the limits in HSV variables
-        lower = np.array([59, 69, 148])
-        upper = np.array([157, 236, 255])
+        lower = np.array([65, 107, 86])
+        upper = np.array([148, 236, 255])
     if color == "Yellow":
         #Define the limits in HSV variables
         lower = np.array([20, 100, 100])
         upper = np.array([32, 220, 255])
 
-    # l_h = cv.getTrackbarPos("L - H", "Trackbars")
-    # l_s = cv.getTrackbarPos("L - S", "Trackbars")
-    # l_v = cv.getTrackbarPos("L - V", "Trackbars")
-    # u_h = cv.getTrackbarPos("U - H", "Trackbars")
-    # u_s = cv.getTrackbarPos("U - S", "Trackbars")
-    # u_v = cv.getTrackbarPos("U - V", "Trackbars")  
+    l_h = cv.getTrackbarPos("L - H", "Trackbars")
+    l_s = cv.getTrackbarPos("L - S", "Trackbars")
+    l_v = cv.getTrackbarPos("L - V", "Trackbars")
+    u_h = cv.getTrackbarPos("U - H", "Trackbars")
+    u_s = cv.getTrackbarPos("U - S", "Trackbars")
+    u_v = cv.getTrackbarPos("U - V", "Trackbars")  
 
-    # lower = np.array([l_h, l_s, l_v])
-    # upper = np.array([u_h, u_s, u_v])
+    lower = np.array([l_h, l_s, l_v])
+    upper = np.array([u_h, u_s, u_v])
 
     #Define threshold for red color
     mask = cv.inRange(hsv, lower, upper)
@@ -77,8 +77,8 @@ def detect_contourn(image, color):
     kernel = np.ones((5,5), np.uint8)
     #Apply opening process
     opening = cv.morphologyEx(mask, cv.MORPH_OPEN, kernel, iterations = 5)
-    # output = cv.bitwise_and(image, image, mask=opening)
-    # cv.imshow("Opening", output)
+    output = cv.bitwise_and(image, image, mask=opening)
+    cv.imshow("Opening", output)
     #Find BLOB's contours
     cnts, _ = cv.findContours(opening.copy(), cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE)
 
@@ -201,9 +201,6 @@ r3 = 0
 obj_frame = []
 ground_frame = []
 distances = []
-cX1_med = []
-cY1_med = []
-r1_med = []
 T_flag = False
 
 

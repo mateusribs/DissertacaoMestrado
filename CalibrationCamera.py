@@ -44,11 +44,6 @@ for fname in images:
 print(">==> Starting calibration")
 ret, cam_mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
-
-
-
-
-
 h,  w = img1.shape[:2]
 print("Image Width, Height")
 print(w, h)
