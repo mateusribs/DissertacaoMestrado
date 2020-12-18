@@ -28,15 +28,21 @@ def nothing(x):
     pass
 
 #Criar janela para trackbar
-cv.namedWindow("Trackbars")
+# cv.namedWindow("Trackbars")
 
-#Criar trackbars
-cv.createTrackbar("L - H", "Trackbars", 0, 179, nothing)
-cv.createTrackbar("L - S", "Trackbars", 0, 255, nothing)
-cv.createTrackbar("L - V", "Trackbars", 0, 255, nothing)
-cv.createTrackbar("U - H", "Trackbars", 179, 179, nothing)
-cv.createTrackbar("U - S", "Trackbars", 255, 255, nothing)
-cv.createTrackbar("U - V", "Trackbars", 255, 255, nothing)
+#Criar trackbars HSV
+# cv.createTrackbar("L - H", "Trackbars", 0, 179, nothing)
+# cv.createTrackbar("L - S", "Trackbars", 0, 255, nothing)
+# cv.createTrackbar("L - V", "Trackbars", 0, 255, nothing)
+# cv.createTrackbar("U - H", "Trackbars", 179, 179, nothing)
+# cv.createTrackbar("U - S", "Trackbars", 255, 255, nothing)
+# cv.createTrackbar("U - V", "Trackbars", 255, 255, nothing)
+
+
+#Criar trackbars Binary
+# cv.createTrackbar("Max Size", "Trackbars", 100, 1500, nothing)
+# cv.createTrackbar("BlockSize", "Trackbars", 11, 49, nothing)
+# cv.createTrackbar("Constant", "Trackbars", 2, 20, nothing)
 
 
 def detect_contourn(image, color):
@@ -81,8 +87,74 @@ def detect_contourn(image, color):
     cv.imshow("Opening", output)
     #Find BLOB's contours
     cnts, _ = cv.findContours(opening.copy(), cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE)
-
+        
     return  cnts
+
+
+def detect_contourn_binary(image):
+
+    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    gray = cv.medianBlur(gray, 5)
+    gray = cv.bitwise_not(gray)
+
+    # binary = cv.adaptiveThreshold(gray, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 3, 2)
+    ret, img_thresh = cv.threshold(gray, 170, 255, cv.THRESH_BINARY)
+
+    cnts, _ = cv.findContours(img_thresh.copy(), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+
+    points = []
+
+    for c in cnts:
+
+        M = cv.moments(c)
+ 
+        perimeter = cv.arcLength(c, True)
+        #Compute the eccentricity
+        if perimeter != 0 and M["m00"]>=1500 and M["m00"]<=4000:
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+            
+            _, radius = cv.minEnclosingCircle(c)
+            radius = int(radius)
+            center = (cX, cY)
+            metric = (4*math.pi*M["m00"])/perimeter**2
+            if metric > 0.8:
+                #Draw the contour and center of the shape on the image
+                # cv.drawContours(image, [c], -1, (0, 255, 0), 1)
+                cv.circle(image, center, radius+1, (0, 255, 0), 1)
+                cv.circle(image, center, 1, (0, 255, 0), -1)
+                points.append(center)
+
+    cv.imshow('gray', gray)
+
+    if len(points)==3:
+
+        ####### FIND CIRCLE COORDINATES ###################
+        slope1 = 180*math.atan2((points[0][1] - points[1][1]), (points[0][0] - points[1][0]))/math.pi
+        d1 = int(math.sqrt((points[1][0]-points[0][0])**2 + (points[1][1]-points[0][1])**2))
+        print("Slope1:", slope1)
+        print("Dist1:", d1)
+
+        slope2 = 180*math.atan2((points[1][1] - points[2][1]), (points[1][0] - points[2][0]))/math.pi
+        d2 = int(math.sqrt((points[2][0]-points[1][0])**2 + (points[2][1]-points[1][1])**2))
+        print("Slope2:", slope2)
+        print("Dist2:", d2)
+
+        slope3 = 180*math.atan2((points[0][1] - points[2][1]), (points[0][0] - points[2][0]))/math.pi
+        d3 = int(math.sqrt((points[0][0]-points[2][0])**2 + (points[0][1]-points[2][1])**2))
+        print("Slope3", slope3)
+        print("Dist3:", d3)
+
+        cv.line(image, points[1], points[0], (255, 0, 0))
+        cv.line(image, points[2], points[1], (0, 255, 0))
+        cv.line(image, points[2], points[0], (0, 0, 255))  
+
+
+
+    
+
+    
+
 
 def center_mass_calculate(image, c):
 
@@ -102,8 +174,8 @@ def center_mass_calculate(image, c):
     if metric > 0.8:
         #Draw the contour and center of the shape on the image
         # cv.drawContours(image, [c], -1, (0, 0, 0), 1)
-        cv.circle(image, center, radius, (0, 0, 0), 1)
-        cv.circle(image, center, 1, (0, 0, 0), -1)
+        cv.circle(image, center, radius, (255, 255, 255), 1)
+        cv.circle(image, center, 1, (255, 255, 255), -1)
 
                           
     return cX, cY, radius
@@ -171,7 +243,7 @@ def get_pose(image, objpoints, imgpoints, mtx, dist):
     axis = np.float32([[.05, 0, 0], [0, .05, 0], [0, 0, .05]]).reshape(-1,3)
 
     # Find the rotation and translation vectors.
-    _, rvecs, tvecs, _ = cv.solvePnPRansac(objpoints, imgpoints, mtx, dist, iterationsCount=5)
+    _, rvecs, tvecs, _ = cv.solvePnPRansac(objpoints, imgpoints, mtx, dist)
     # project 3D points to image plane
     imgpts, jac = cv.projectPoints(axis, rvecs, tvecs, mtx, dist)
     imgpts = imgpts.astype(np.int)
@@ -207,19 +279,24 @@ T_flag = False
 while True:
     img = cap.read()
     frame_id += 1
+    
 
+    centers = detect_contourn_binary(img)
+   
     #Get the circle's contourn based on it color
-    cnts_red = detect_contourn(img, "Red")
-    cnts_green = detect_contourn(img, "Green")
-    cnts_blue = detect_contourn(img, "Blue")
+    # cnts_red = detect_contourn(img, "Red")
+    # cnts_green = detect_contourn(img, "Green")
+    # cnts_blue = detect_contourn(img, "Blue")
 
     #Get the center point of the detected circle
-    for c in cnts_red:
-        cX1, cY1, r1 = center_mass_calculate(img, c)
-    for c in cnts_green:
-        cX2, cY2, r2 = center_mass_calculate(img, c)
-    for c in cnts_blue:
-        cX3, cY3, r3 = center_mass_calculate(img, c)
+    # for c in cnts_red:
+    #     cX1, cY1, r1 = center_mass_calculate(img, c)
+    # for c in cnts_green:
+    #     cX2, cY2, r2 = center_mass_calculate(img, c)
+    # for c in cnts_blue:
+    #     cX3, cY3, r3 = center_mass_calculate(img, c)
+    # for c in cnts:
+    #     cX, cY, r = center_mass_calculate(img, c)
 
     
     #Set the image points
