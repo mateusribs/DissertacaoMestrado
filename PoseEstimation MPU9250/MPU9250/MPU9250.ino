@@ -106,18 +106,15 @@ void loop() {
   dt = (millis() - millisOld)/1000.;
   millisOld = millis();
 
-
-  
   theta = (theta + gy*dt)*0.9 + 0.1*thetaA;
   phi = (phi - gx*dt)*0.9 + 0.1*phiA;
 
-//  Xm = mx*cos(theta*PI/180) - my*sin(phi*PI/180)*sin(theta*PI/180) + mz*cos(phi*PI/180)*sin(theta*PI/180);
-//  Ym = my*cos(phi*PI/180) + mz*sin(phi*PI/180);
-//  
-//  psi = (psi + gy*dt)*0.9 + 0.1*atan2(Ym, Xm)*180/PI;
+  Xm = mx*cos(theta*PI/180) - my*sin(phi*PI/180)*sin(theta*PI/180) + mz*cos(phi*PI/180)*sin(theta*PI/180);
+  Ym = my*cos(phi*PI/180) + mz*sin(phi*PI/180);  
+  psi = atan2(Ym, Xm)*180/PI;
   
-  Serial.print(phi); Serial.print(","); Serial.println(theta); 
-  
+  Serial.print(phi); Serial.print(","); Serial.println(theta);
+//  Serial.println(psi);
   delay(100);
 }
 

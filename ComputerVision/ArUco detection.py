@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 from imutils.video import WebcamVideoStream
 import matplotlib.pyplot as plt
 import glob
@@ -8,7 +9,7 @@ import math
 
 
 #Load the predefinied dictionary
-dictionary = cv.aruco.Dictionary_get(cv.aruco.DICT_6X6_250)
+dictionary = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_50)
 
 # Load previously saved calibration data
 path = './camera_data/camera_calibration.npz'
@@ -17,12 +18,11 @@ npzfile = np.load(path)
 mtx = npzfile[npzfile.files[0]]
 #Distortion Matrix
 dist = npzfile[npzfile.files[1]]
-rvec = npzfile[npzfile.files[2]]
-tvec = npzfile[npzfile.files[3]]
 print(mtx ,dist)
 
 #Font setup
 font = cv.FONT_HERSHEY_PLAIN
+
 start_time = time.time()
 
 # #Generate the marker
@@ -31,104 +31,175 @@ start_time = time.time()
 
 # cv.imwrite("marker39.png", markerImage)
 
-angle_data = open("angle_data.txt",'w')
-angle_data.close()
+#Create position data.txt
+pos_data = open("pos_data.txt",'w')
+pos_data.close()
 
 #Camera instance with thread
-cap = WebcamVideoStream(src=0).start()
+# cap = WebcamVideoStream(src=0).start()
+cap = cv.VideoCapture('teste_2.mp4')
 
-start_clock = time.clock()
+#Create board object
+board = cv.aruco.GridBoard_create(2, 2, 0.028, 0.003, dictionary)
+
+start_clock = time.perf_counter()
+
+#Declare somes important variables
+rvecs = None
+tvecs = None
 
 frame_id = 0
+
+pos_x = []
+pos_y = []
+pos_z = []
+
+offset_x = 0
+offset_y = 0
+offset_z = 0
+
+#Set position calibration
+calib_pos = True
+
 while True:
-    img = cap.read()
-    # gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    frame_id += 1
+    ret, img = cap.read()
 
-    parameters = cv.aruco.DetectorParameters_create()
+    if ret:
+        #Convert frame to gray scale
+        gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+        #Frame count increment
+        frame_id += 1
 
-    #Detect the markers in the image
-    markerCorners, markerIDs, rejectedCandidates = cv.aruco.detectMarkers(img, dictionary, parameters = parameters)
+        #Set parameters for the marker tracking
+        parameters = cv.aruco.DetectorParameters_create()
 
-   
+        #Detect the markers in the image
+        markerCorners, markerIDs, rejectedCandidates = cv.aruco.detectMarkers(gray, dictionary, parameters = parameters)
+        #Refine detection
+        markerCorners, markerIDs, rejectedCandidates, recoveredIds = cv.aruco.refineDetectedMarkers(img, board, markerCorners,
+                                                                                                    markerIDs, rejectedCandidates, mtx, dist)
+        #Open position file to write data position
+        pos_data = open("pos_data.txt", "a+")
 
-    angle_data = open("angle_data.txt", "a+")
+        #Verify if there is some marker detected
+        if markerIDs is not None and len(markerIDs) > 0:
+            # print("Marker Detected")
+            #Compute board's pose
+            pose, rvecs, tvecs = cv.aruco.estimatePoseBoard(markerCorners, markerIDs, board, mtx, dist, rvecs, tvecs)
+            #Use Rodrigues formula to transform rotation vector into matrix
+            R_matrix, _ = cv.Rodrigues(rvecs)
 
-    if np.all(markerIDs != None):
-        rvecs, tvecs, _ = cv.aruco.estimatePoseSingleMarkers(markerCorners, 5.3, mtx, dist)
-        R_matrix, _ = cv.Rodrigues(rvecs)
+            if pose:
+                cv.aruco.drawAxis(img, mtx, dist, rvecs, tvecs, 0.028)
 
-        print("tvecs:", tvecs)
+            cv.aruco.drawDetectedMarkers(img, markerCorners)   
+            
+            #Getting quaternions from rotation matrix
+            r = R.from_matrix(R_matrix)
+            q = r.as_quat()
 
-        for i in range(0, markerIDs.size):
-            cv.aruco.drawAxis(img, mtx, dist, rvecs[i], tvecs[i], 5)
+            #Calibration position: In the beggining of the video, the script will get 40 early datas to compute the mean
+            #measurements and so find offset values. Having the offset, we can calculate the relative origin.
+            #Keep in mind that the marker's position was acquired with respect to camera frame.
+            if calib_pos:
 
-        cv.aruco.drawDetectedMarkers(img, markerCorners)    
+                pos_x.append(float(tvecs[0]))
+                pos_y.append(float(tvecs[1]))
+                pos_z.append(float(tvecs[2]))
 
-    
-        phi_est = 180*math.atan2(R_matrix[2,1], R_matrix[2,2])/math.pi
-        theta_est = 180*math.atan2(-R_matrix[2, 0], math.sqrt(R_matrix[2,1]**2 + R_matrix[2,2]**2))/math.pi
-        psi_est = 180*math.atan2(R_matrix[1,0], R_matrix[0,0])/math.pi
-        # print("Estimated Angles")
-        # print("Roll:",phi_est," Pitch:",theta_est," Yaw:",psi_est)
-        # # print("Matriz Rotação Original:", quad_rot)
-        # print("Matriz Rotação Estimada:", R_matrix)
-        cv.putText(img, "Roll:"+str(round(phi_est, 2)), (50,440), font, 1, (255,255,255), 2)
-        cv.putText(img, "Pitch:"+str(round(theta_est, 2)), (200,440), font, 1, (255,255,255), 2)
-        cv.putText(img, "Yaw:"+str(round(psi_est, 2)), (350,440), font, 1, (255,255,255), 2)
+                if len(pos_x) == 40 and len(pos_y) == 40 and len(pos_z):
+                    
+                    offset_x = sum(pos_x)/len(pos_x)
+                    offset_y = sum(pos_y)/len(pos_y)
+                    offset_z = sum(pos_z)/len(pos_z)
+                    
+                    # print(offset_x)
+                    # print(offset_y)
+                    # print(offset_z)
 
+                    calib_pos = False
+
+            #Marker's position
+            xf = float(tvecs[0]) - offset_x
+            yf = float(tvecs[1]) - offset_y
+            zf = float(tvecs[2]) - offset_z
+
+            # print('Rotation Matrix:', R_matrix)
+            # print("Quaternion: ", q)
+
+            #Attitude estimation
+            # phi_est = 180*math.atan2(R_matrix[2,1], R_matrix[2,2])/math.pi
+            # theta_est = 180*math.atan2(-R_matrix[2, 0], math.sqrt(R_matrix[2,1]**2 + R_matrix[2,2]**2))/math.pi
+            # psi_est = 180*math.atan2(R_matrix[1,0], R_matrix[0,0])/math.pi
+            # print("Estimated Angles")
+            # print("Roll:",phi_est," Pitch:",theta_est," Yaw:",psi_est)
+            # # print("Matriz Rotação Original:", quad_rot)
+            # print("Matriz Rotação Estimada:", R_matrix)   
+            
+            #Write position data in pos_data.txt
+            pos_data.write("{:.4f} , ".format(xf) + "{:.4f} , ".format(yf) + "{:.4f} , ".format(zf) + str(time.process_time()-start_clock) + "\n")
+
+            # last_col = np.array([[0, 0, 0, 1]])
+            # T_mat = np.concatenate((R_matrix, tvecs), axis=1)
+            # T_mat = np.concatenate((T_mat, last_col), axis=0)
+
+            #Print position values in frame
+            cv.putText(img, "X:"+str(np.round(xf, 4)), (50,700), font, 1, (255,255,255), 2)
+            cv.putText(img, "Y:"+str(np.round(yf, 4)), (200,700), font, 1, (255,255,255), 2)
+            cv.putText(img, "Z:"+str(np.round(zf, 4)), (350,700), font, 1, (255,255,255), 2)
+            
+            
+            
+            
+
+        #Compute FPS
+        elapsed_time = time.time() - start_time
+        fps = int(frame_id / elapsed_time)
+        #Print FPS on the screen
+        cv.putText(img, "FPS:" + str(fps), (10, 80), font, 1, (255,255,255), 1)
+        cv.imshow('img', img)
         
-        
-        angle_data.write("{:.4f} , ".format(phi_est) + "{:.4f} , ".format(theta_est) + "{:.4f} , ".format(psi_est) + str(time.clock()-start_clock) + "\n")
-    
-        
-        
-        
-        
+        key = cv.waitKey(10)
+        if key == ord('n') or key == ord('p'):
+            break
 
-    #Compute FPS
-    elapsed_time = time.time() - start_time
-    fps = int(frame_id / elapsed_time)
-    #Print FPS on the screen
-    cv.putText(img, "FPS:" + str(fps), (10, 80), font, 1, (255,255,255), 1)
-
-    cv.imshow('img', img)
-        
-    key = cv.waitKey(10)
-    if key == 27:
-        break
-
-angle_data.close()
-cap.stop()
+pos_data.close()
+# cap.stop()
 cv.destroyAllWindows()
 
 
 plt.style.use("fivethirtyeight")
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-phi, theta, psi, time = [], [], [], []
+fig, (ax, ax2, ax3) = plt.subplots(3, 1, figsize=(10,10), sharex=True)
+x, y, z, time = [], [], [], []
 
-data = open("angle_data.txt", "r").read()
+data = open("pos_data.txt", "r").read()
 lines = data.split('\n')
 
 for line in lines:
     if len(line)>1:
-        phis, thetas, psis, times = line.split(' , ')
-        phi.append(float(phis))
-        theta.append(float(thetas))
-        psi.append(float(psis))
+        xs, ys, zs, times = line.split(' , ')
+        x.append(float(xs))
+        y.append(float(ys))
+        z.append(float(zs))
         time.append(float(times))
 
 
-ax.plot(time, phi, label = 'phi (roll)', linewidth = 1)
-ax.plot(time, theta, label = 'theta (pitch)', linewidth=1)
-ax.plot(time, psi, label = 'psi (yaw)', linewidth=1)
-plt.ylim(-180, 180)
-ax.set_xlabel('Time (s)')
-ax.set_ylabel('Angle (degrees)')
-ax.set_title('Estimated Orientation')
-ax.legend()
+ax.plot(time, x, 'r', label = r'$x(t)$', linewidth = 1)
+ax2.plot(time, y, 'g', label = r'$y(t)$', linewidth=1)
+ax3.plot(time, z, 'b', label = r'$z(t)$', linewidth=1)
+ax3.set_xlabel('Time (s)')
 
+ax.set_ylabel(r'$x$ (meters)')
+ax2.set_ylabel(r'$y$ (meters)')
+ax3.set_ylabel(r'$z$ (meters)')
+ax.set_title('Posição')
+
+ax.set_ylim([-0.1, 0.1])
+ax2.set_ylim([-0.1, 0.1])
+ax3.set_ylim([-0.1, 0.1])
+ax.legend()
+ax2.legend()
+ax3.legend()
 
 plt.tight_layout()
 plt.show()

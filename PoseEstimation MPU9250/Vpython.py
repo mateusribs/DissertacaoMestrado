@@ -10,7 +10,7 @@ import math
 import numpy as np
 import serial
 
-arduino = serial.Serial('COM5', 115200)
+arduino = serial.Serial('COM3', 115200)
 time.sleep(1)
 
 
