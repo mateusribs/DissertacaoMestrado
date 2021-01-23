@@ -31,7 +31,7 @@ ids_all = []
 # Determined at runtime
 image_size = None 
 
-images = glob.glob('calibration smartphone/*.jpeg')
+images = glob.glob('calibration charuco/*.JPG')
 validCaptures = 0
 
 for fname in images:
@@ -83,7 +83,7 @@ for fname in images:
 			break
 
 		validCaptures += 1
-		if validCaptures == 20:
+		if validCaptures == 30:
 			break
 
 # Destroy any open CV windows

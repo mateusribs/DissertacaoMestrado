@@ -1,22 +1,29 @@
-import cv2
-import cv2.aruco as aruco
-
+import cv2 as cv
+import numpy as np
 # Create ChArUco board, which is a set of Aruco markers in a chessboard setting
 # meant for calibration
 # the following call gets a ChArUco board of tiles 5 wide X 7 tall
-gridboard = aruco.CharucoBoard_create(
-        squaresX=6, 
-        squaresY=8, 
-        squareLength=0.04, 
-        markerLength=0.02, 
-        dictionary=aruco.Dictionary_get(aruco.DICT_5X5_50))
+# gridboard = cv.aruco.CharucoBoard_create(
+#         squaresX=6, 
+#         squaresY=8, 
+#         squareLength=0.04, 
+#         markerLength=0.02, 
+#         dictionary=cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_50))
+
+dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_50)
+gridboard = cv.aruco.GridBoard_create(2, 2, 0.04, 0.005, dictionary)
 
 # Create an image from the gridboard
-img = gridboard.draw(outSize=(988, 1400))
-cv2.imwrite("test_charuco.jpg", img)
+img = np.zeros((300,300))
+img = gridboard.draw((300, 300), img, 10, 1)
+# marker = np.zeros((250, 250, 1), dtype='uint8')
+# dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_50)
+# cv.aruco.drawMarker(dictionary, 4, 250, marker, 1)
+
+cv.imwrite("aruco_marker.jpg", img)
 
 # Display the image to us
-cv2.imshow('Gridboard', img)
+cv.imshow('Gridboard', img)
 # Exit on any key
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+cv.waitKey(0)
+cv.destroyAllWindows()

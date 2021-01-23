@@ -1,6 +1,8 @@
 import cv2
 
-cap = cv2.VideoCapture('teste.MP4')
+cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1280)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
 
 if not cap.isOpened():
     print("Error opening file")
