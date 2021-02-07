@@ -49,12 +49,6 @@ angle_data.close()
 #Camera instance with thread
 cap = WebcamVideoStream(src=0).start()
 # cap = cv.VideoCapture(0)
-# cap.set(cv.CAP_PROP_FRAME_HEIGHT, 1280)
-# cap.set(cv.CAP_PROP_FRAME_WIDTH, 1024)
-# cap = cv.VideoCapture(0)
-# addres = "https://192.168.42.129:8080/video"
-# cap.open(addres)
-
 
 #Create board object
 # board = cv.aruco.GridBoard_create(2, 2, 0.037, 0.005, dictionary)
@@ -82,7 +76,7 @@ calib_pos = True
 kalman_est = False
 
 #Sample time
-dt = 0.01
+dt = 0.1
 #System matrix and output matrix
 F = np.array([[1, 0, 0, dt, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               [0, 1, 0, 0, dt, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -107,8 +101,8 @@ H = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]])
 #Initialization
-x0 = np.array([[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0]])
-P0 = np.eye(14)*10
+x0 = np.array([[0],[0],[0],[0],[0],[0],[1],[0],[0],[0],[0],[0],[0],[0]])
+P0 = np.eye(14)*1000
 
 #Covariances matrices
 Q = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -124,16 +118,16 @@ Q = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ,1, 0],
-              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]])*0.1
+              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]])
 
 
-R = np.array([[0.1, 0, 0, 0, 0, 0, 0],
-              [0, 0.1, 0, 0, 0, 0, 0],
-              [0, 0, 0.1, 0, 0, 0, 0],
-              [0, 0, 0, 100, 0, 0, 0],
-              [0, 0, 0, 0, 100, 0, 0],
-              [0, 0, 0, 0, 0, 100, 0],
-              [0, 0, 0, 0, 0, 0, 100]])
+R = np.array([[0.01, 0, 0, 0, 0, 0, 0],
+              [0, 0.01, 0, 0, 0, 0, 0],
+              [0, 0, 0.01, 0, 0, 0, 0],
+              [0, 0, 0, 1, 0, 0, 0],
+              [0, 0, 0, 0, 1, 0, 0],
+              [0, 0, 0, 0, 0, 1, 0],
+              [0, 0, 0, 0, 0, 0, 1]])
 
 
 
@@ -148,8 +142,9 @@ while True:
 
     #Set parameters for the marker tracking
     parameters = cv.aruco.DetectorParameters_create()
-    parameters.adaptiveThreshConstant = 10
-    parameters.cornerRefinementWinSize = 10
+    parameters.minMarkerPerimeterRate = 0.1
+    # parameters.adaptiveThreshConstant = 10
+    parameters.cornerRefinementWinSize = 5
     parameters.cornerRefinementMethod = cv.aruco.CORNER_REFINE_CONTOUR
     # parameters.cornerRefinementMaxIterations = 50
     parameters.cornerRefinementMinAccuracy = 0
@@ -176,14 +171,15 @@ while True:
             rvecs, tvecs, _ = cv.aruco.estimatePoseSingleMarkers(markerCorners[i], 0.066, mtx, dist)
             rvecs = np.reshape(rvecs, (3,1))
             tvecs = np.reshape(tvecs, (3,1))
+            
             #Use Rodrigues formula to transform rotation vector into matrix
             R_matrix, _ = cv.Rodrigues(rvecs)
             #Rotation Matrix marker to camera
-            R_marker = R_matrix.T
+            # R_marker = R_matrix.T
 
-            R_flip = np.array([[1, 0, 0],[0, -1, 0], [0, 0, -1]])
+            # R_flip = np.array([[1, 0, 0],[0, -1, 0], [0, 0, -1]])
             #Getting quaternions from rotation matrix
-            r = sci.spatial.transform.Rotation.from_matrix(R_flip@R_marker)
+            r = sci.spatial.transform.Rotation.from_matrix(R_matrix)
             q = r.as_quat()
             # # print('Quaternion:')
             # # print(q)
@@ -216,8 +212,8 @@ while True:
                     offset_y = sum(pos_y)/len(pos_y)
                     # offset_z = sum(pos_z)/len(pos_z)
                     
-                    print(offset_x)
-                    print(offset_y)
+                    # print(offset_x)
+                    # print(offset_y)
                     # print(offset_z)
 
                     calib_pos = False
@@ -229,24 +225,31 @@ while True:
 
             # offset_x = -0.87540023
             # offset_y = -0.2311414
-            
+
             zf = float(tvecs[2])*0.316 + 0.002
-            xf = float(tvecs[0]) - offset_x
-            yf = float(tvecs[1]) - offset_y
+            #Z influence under x
+            x2z = 0.932 - 1.187*zf
+            #Z influence under y
+            y2z = 0.326 - 0.415*zf
+
+            #Corrected measurement x and y
+            xf = float(tvecs[0]) - offset_x - x2z
+            yf = float(tvecs[1]) - offset_y - y2z
 
 
             #Kalman Filter
 
             if calib_pos is False:
-
+                
+                dt = time.time() - start_time
                 if kalman_est:
                     #X estimation
-                    #Update
+                    #Prediction
                     x_est_e =  np.dot(F, x0)
                     P_k = F@P0@F.T + Q
                     K = P_k@H.T@inv(H@P_k@H.T+R)
 
-                    #Assimilation
+                    #Update
                     inov = np.array([[xf],[yf],[zf],[q[0]],[q[1]],[q[2]],[q[3]]]) - H@x_est_e
                     x_est_a = x_est_e + K@inov
                     P0 = P_k - K@H@P_k
@@ -274,9 +277,9 @@ while True:
                 
                 else:
                     #Print position values in frame
-                    cv.putText(img, "X:"+str(np.round(float(xf), 4)), (10,400), font, 1, (0,0,255), 2)
-                    cv.putText(img, "Y:"+str(np.round(float(yf), 4)), (100,400), font, 1, (0,255,0), 2)
-                    cv.putText(img, "Z:"+str(np.round(float(zf), 4)), (200,400), font, 1, (255,0,0), 2)
+                    cv.putText(img, "X:"+str(np.round(float(xf), 4)), (100,400), font, 1, (0,0,255), 2)
+                    cv.putText(img, "Y:"+str(np.round(float(yf), 4)), (200,400), font, 1, (0,255,0), 2)
+                    cv.putText(img, "Z:"+str(np.round(float(zf), 4)), (3    00,400), font, 1, (255,0,0), 2)
                     cv.putText(img, "Phi:"+str(np.round(float(phi), 2)), (10,120), font, 1, (0,0,255), 2)
                     cv.putText(img, "Theta:"+str(np.round(float(theta), 2)), (10,160), font, 1, (0,255,0), 2)
                     cv.putText(img, "Psi:"+str(np.round(float(psi), 2)), (10,200), font, 1, (255,0,0), 2)

@@ -10,15 +10,15 @@ import numpy as np
 #         markerLength=0.02, 
 #         dictionary=cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_50))
 
-dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_50)
-gridboard = cv.aruco.GridBoard_create(2, 2, 0.04, 0.005, dictionary)
+# dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_50)
+# gridboard = cv.aruco.GridBoard_create(2, 2, 0.1, 0.3, dictionary)
 
 # Create an image from the gridboard
-img = np.zeros((300,300))
-img = gridboard.draw((300, 300), img, 10, 1)
-# marker = np.zeros((250, 250, 1), dtype='uint8')
-# dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_50)
-# cv.aruco.drawMarker(dictionary, 4, 250, marker, 1)
+# img = np.zeros((400,400))
+# img = gridboard.draw((400, 400), img, 10, 1)
+img = np.zeros((250, 250, 1), dtype='uint8')
+dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_APRILTAG_36H11)
+cv.aruco.drawMarker(dictionary, 4, 250, img, 1)
 
 cv.imwrite("aruco_marker.jpg", img)
 

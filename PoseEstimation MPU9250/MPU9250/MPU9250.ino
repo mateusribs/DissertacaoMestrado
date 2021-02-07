@@ -1,5 +1,8 @@
-#include <MPU9250.h>
-#include <math.h>
+#include "MPU9250.h"
+#include "SensorFusion.h"
+#include "math.h"
+
+SF fusion;
 
 //Sensor measures values
 float ax, ay, az;
@@ -23,7 +26,9 @@ float theta = 0;
 float phi = 0;
 float psi = 0;
 float dt;
+float q0, q1, q2, q3;
 unsigned long millisOld;
+
 
 
 // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
@@ -45,7 +50,7 @@ void setup() {
     while(1) {}
   }
   // setting the accelerometer full scale range to +/-8G 
-  IMU.setAccelRange(MPU9250::ACCEL_RANGE_8G);
+  IMU.setAccelRange(MPU9250::ACCEL_RANGE_4G);
   // setting the gyroscope full scale range to +/-500 deg/s
   IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);
   // setting DLPF bandwidth to 20 Hz
@@ -73,9 +78,9 @@ void setup() {
 //  IMU.setMagCalZ(IMU.getMagBiasZ_uT(), IMU.getMagScaleFactorZ());
   
   //Valores guardados de calibração
-  IMU.setAccelCalX(-32.60, 1.0f);
-  IMU.setAccelCalY(-15.55, 1.0f);
-  IMU.setAccelCalZ(2.12, 1.0f);
+  IMU.setAccelCalX(12.37, 1.0f);
+  IMU.setAccelCalY(3.82, 1.0f);
+  IMU.setAccelCalZ(3.52, 1.0f);
 }
 
 void loop() {
@@ -87,33 +92,40 @@ void loop() {
   ay = IMU.getAccelY_mss();
   az = IMU.getAccelZ_mss();
   //Get gyroscope measurements
-  gx = IMU.getGyroX_rads()*180/PI;
-  gy = IMU.getGyroY_rads()*180/PI;
-  gz = IMU.getGyroZ_rads()*180/PI;
+  gx = IMU.getGyroX_rads();
+  gy = IMU.getGyroY_rads();
+  gz = IMU.getGyroZ_rads();
   //Get magnetometer measurements
   mx = IMU.getMagX_uT();
   my = IMU.getMagY_uT();
   mz = IMU.getMagZ_uT();
-
+  
   // display the data
-//  Serial.print("Accel: "); Serial.print(ax); Serial.print(","); Serial.print(ay); Serial.print(","); Serial.println(az);
-//  Serial.print("Gyro: "); Serial.print(gx); Serial.print(","); Serial.print(gy); Serial.print(","); Serial.println(gz);
+  
+  Serial.print("Accel: "); Serial.print(ax); Serial.print(","); Serial.print(ay); Serial.print(","); Serial.println(az);
+  Serial.print("Gyro: "); Serial.print(gx); Serial.print(","); Serial.print(gy); Serial.print(","); Serial.println(gz);
 //  Serial.print("Mag: "); Serial.print(mx); Serial.print(","); Serial.print(my); Serial.print(","); Serial.println(mz);
 
-  thetaA = constrainAngle360(-atan2(ax, az))*180/PI - 180;
-  phiA = constrainAngle360(-atan2(ay, az))*180/PI - 180;
+  dt = fusion.deltatUpdate();
+  fusion.MahonyUpdate(gx, gy, gz, ax, ay, az, dt);  //mahony is suggested if there isn't the mag
+//  fusion.MadgwickUpdate(gx, gy, gz, ax, ay, az, dt);  //else use the magwick
 
-  dt = (millis() - millisOld)/1000.;
-  millisOld = millis();
+  theta = fusion.getRoll();
+  phi = fusion.getPitch();
+  psi = fusion.getYaw();
+  q0 = fusion.getQ0();
+  q1 = fusion.getQ1();
+  q2 = fusion.getQ2();
+  q3 = fusion.getQ3();
+  float qnorm = sqrt(q0*q0+q1*q1+q2*q2+q3*q3);
 
-  theta = (theta + gy*dt)*0.9 + 0.1*thetaA;
-  phi = (phi - gx*dt)*0.9 + 0.1*phiA;
-
-  Xm = mx*cos(theta*PI/180) - my*sin(phi*PI/180)*sin(theta*PI/180) + mz*cos(phi*PI/180)*sin(theta*PI/180);
-  Ym = my*cos(phi*PI/180) + mz*sin(phi*PI/180);  
-  psi = atan2(Ym, Xm)*180/PI;
-  
-  Serial.print(phi); Serial.print(","); Serial.println(theta);
+  Serial.println("---------------------------------------------------------------------");
+  Serial.print("q0:"); Serial.print(q0); Serial.print(" q1:"); Serial.print(q1); Serial.print(" q2:"); Serial.print(q2); Serial.print(" q3:"); Serial.println(q3);
+  Serial.println(qnorm);
+  Serial.println("---------------------------------------------------------------------");
+  Serial.print("Roll:"); Serial.print(phi); Serial.print(","); 
+  Serial.print("Pitch:"); Serial.print(theta); Serial.print(','); 
+  Serial.print("Yaw:"); Serial.println(psi);
 //  Serial.println(psi);
   delay(100);
 }
