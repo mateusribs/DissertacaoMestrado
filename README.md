@@ -22,9 +22,10 @@
  - Aplicação do algoritmo (3) em tempo real utilizando uma webcam de baixo custo:
  
  ------------------------------ IMU ---------------------------------------------------------
- - Calibragem do sensor MPU9250 de 9 eixos (Acelerômetro, Giroscópio e Magnetômetro) - Algoritmo de calibragem baseado no trabalho de Kris Winer. Link para o repositório: https://github.com/kriswiner/MPU9250.
+ - Calibragem do sensor MPU9250 de 9 eixos (Acelerômetro, Giroscópio e Magnetômetro) - Algoritmo de calibragem baseado no trabalho de Bryan Taylor. Link para o repositório: https://github.com/bolderflight/MPU9250.
    - Acelerômetro ---> Okay
    - Giroscópio ----> Okay
+ - Fusão Sensorial - Utiliza-se o algoritmo de AHRS (Attitude and Heading Reference System) proposto por Mahony. O algoritmo foi implementado através da biblioteca SensorFusion disponbilizada por https://github.com/aster94/SensorFusion. Baseada também nos trabalhos de Paul Stroffregen https://github.com/PaulStoffregen/MahonyAHRS. O algoritmo realiza a fusão sensorial entre os dados obtidos pelo acelerômetro e giroscópio através da abordagem de quatérnios para determinação da atitude.
  
  # Etapas Futuras:
   - Melhorar a estimação de atitude, pois há muito ruído envolvendo principalmente os ângulos de rolagem e arfagem (roll e pitch).;
