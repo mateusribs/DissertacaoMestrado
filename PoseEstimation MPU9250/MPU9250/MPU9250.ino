@@ -37,7 +37,7 @@ int status;
 
 void setup() {
   // serial to display data
-  Serial.begin(115200);
+  Serial.begin(9600);
   while(!Serial) {}
 
   // start communication with IMU 
@@ -50,7 +50,7 @@ void setup() {
     while(1) {}
   }
   // setting the accelerometer full scale range to +/-8G 
-  IMU.setAccelRange(MPU9250::ACCEL_RANGE_4G);
+  IMU.setAccelRange(MPU9250::ACCEL_RANGE_2G);
   // setting the gyroscope full scale range to +/-500 deg/s
   IMU.setGyroRange(MPU9250::GYRO_RANGE_500DPS);
   // setting DLPF bandwidth to 20 Hz
@@ -78,9 +78,9 @@ void setup() {
 //  IMU.setMagCalZ(IMU.getMagBiasZ_uT(), IMU.getMagScaleFactorZ());
   
   //Valores guardados de calibração
-  IMU.setAccelCalX(12.37, 1.0f);
-  IMU.setAccelCalY(3.82, 1.0f);
-  IMU.setAccelCalZ(3.52, 1.0f);
+  IMU.setAccelCalX(12.86, 1.0f);
+  IMU.setAccelCalY(4.68, 1.0f);
+  IMU.setAccelCalZ(3.48, 1.0f);
 }
 
 void loop() {
@@ -96,37 +96,40 @@ void loop() {
   gy = IMU.getGyroY_rads();
   gz = IMU.getGyroZ_rads();
   //Get magnetometer measurements
-  mx = IMU.getMagX_uT();
-  my = IMU.getMagY_uT();
-  mz = IMU.getMagZ_uT();
+//  mx = IMU.getMagX_uT();
+//  my = IMU.getMagY_uT();
+//  mz = IMU.getMagZ_uT();
   
   // display the data
   
-  Serial.print("Accel: "); Serial.print(ax); Serial.print(","); Serial.print(ay); Serial.print(","); Serial.println(az);
-  Serial.print("Gyro: "); Serial.print(gx); Serial.print(","); Serial.print(gy); Serial.print(","); Serial.println(gz);
+//  Serial.print("Accel: "); Serial.print(ax); Serial.print(","); Serial.print(ay); Serial.print(","); Serial.println(az);
+//  Serial.print("Gyro: "); Serial.print(gx); Serial.print(","); Serial.print(gy); Serial.print(","); Serial.println(gz);
 //  Serial.print("Mag: "); Serial.print(mx); Serial.print(","); Serial.print(my); Serial.print(","); Serial.println(mz);
 
   dt = fusion.deltatUpdate();
-  fusion.MahonyUpdate(gx, gy, gz, ax, ay, az, dt);  //mahony is suggested if there isn't the mag
-//  fusion.MadgwickUpdate(gx, gy, gz, ax, ay, az, dt);  //else use the magwick
-
-  theta = fusion.getRoll();
-  phi = fusion.getPitch();
-  psi = fusion.getYaw();
+//  fusion.MahonyUpdate(gx, gy, gz, ax, ay, az, dt);  //mahony is suggested if there isn't the mag
+  fusion.MadgwickUpdate(gx, gy, gz, -ax, -ay, -az, dt);  //else use the magwick
+//
+//  theta = fusion.getRoll();
+//  phi = fusion.getPitch();
+//  psi = fusion.getYaw();
   q0 = fusion.getQ0();
   q1 = fusion.getQ1();
   q2 = fusion.getQ2();
   q3 = fusion.getQ3();
   float qnorm = sqrt(q0*q0+q1*q1+q2*q2+q3*q3);
+//
+//  Serial.print(gx); Serial.print(','); Serial.print(gy); Serial.print(','); Serial.print(gz); Serial.print(','); Serial.print(-ax); Serial.print(','); Serial.print(-ay);
+//  Serial.print(','); Serial.print(-az); Serial.print(','); Serial.println(dt);
+//  Serial.println("---------------------------------------------------------------------");
+  Serial.print(q0); Serial.print(','); Serial.print(q1); Serial.print(',');  Serial.print(q2); Serial.print(','); Serial.print(q3); Serial.print(','); Serial.print(-ax);
+  Serial.print(','); Serial.print(-ay); Serial.print(','); Serial.print(-az); Serial.print(','); Serial.print(gx); Serial.print(','); Serial.print(gy); Serial.print(','); Serial.println(gz);
+//  Serial.println(qnorm);
+//  Serial.println("---------------------------------------------------------------------");
+//  Serial.print("Roll:"); Serial.print(phi); Serial.print(","); 
+//  Serial.print("Pitch:"); Serial.print(theta); Serial.print(','); 
+//  Serial.print("Yaw:"); Serial.println(psi);
 
-  Serial.println("---------------------------------------------------------------------");
-  Serial.print("q0:"); Serial.print(q0); Serial.print(" q1:"); Serial.print(q1); Serial.print(" q2:"); Serial.print(q2); Serial.print(" q3:"); Serial.println(q3);
-  Serial.println(qnorm);
-  Serial.println("---------------------------------------------------------------------");
-  Serial.print("Roll:"); Serial.print(phi); Serial.print(","); 
-  Serial.print("Pitch:"); Serial.print(theta); Serial.print(','); 
-  Serial.print("Yaw:"); Serial.println(psi);
-//  Serial.println(psi);
   delay(100);
 }
 

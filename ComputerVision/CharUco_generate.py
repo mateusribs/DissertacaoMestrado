@@ -17,7 +17,7 @@ import numpy as np
 # img = np.zeros((400,400))
 # img = gridboard.draw((400, 400), img, 10, 1)
 img = np.zeros((250, 250, 1), dtype='uint8')
-dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_APRILTAG_36H11)
+dictionary = cv.aruco.getPredefinedDictionary(cv.aruco.DICT_4X4_50)
 cv.aruco.drawMarker(dictionary, 4, 250, img, 1)
 
 cv.imwrite("aruco_marker.jpg", img)

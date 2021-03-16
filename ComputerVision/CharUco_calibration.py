@@ -11,14 +11,14 @@ path = './camera_data/camera_calibration.npz'
 
 # ChAruco board variables
 CHARUCOBOARD_ROWCOUNT = 8
-CHARUCOBOARD_COLCOUNT = 6 
+CHARUCOBOARD_COLCOUNT = 5 
 ARUCO_DICT = aruco.Dictionary_get(aruco.DICT_5X5_50)
 
 # Create constants to be passed into OpenCV and Aruco methods
 CHARUCO_BOARD = aruco.CharucoBoard_create(
 	squaresX=CHARUCOBOARD_COLCOUNT,
 	squaresY=CHARUCOBOARD_ROWCOUNT,
-	squareLength=0.033,
+	squareLength=0.034,
 	markerLength=0.017,
 	dictionary=ARUCO_DICT)
 
@@ -83,7 +83,7 @@ for fname in images:
 			break
 
 		validCaptures += 1
-		if validCaptures == 30:
+		if validCaptures == 55:
 			break
 
 # Destroy any open CV windows
@@ -112,7 +112,18 @@ calibration, cameraMatrix, distCoeffs, rvecs, tvecs = aruco.calibrateCameraCharu
 	imageSize=image_size,
 	cameraMatrix=None,
 	distCoeffs=None)
-		
+
+distCoeffs = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
+
+if calibration:
+	imagem = cv2.imread('c48.JPG')
+	h, w = imagem.shape[:2]
+	newcamera, roi = cv2.getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, (w,h), 1, (w,h))
+	dst = cv2.undistort(imagem, cameraMatrix, distCoeffs, None, newcamera)
+	x, y, w, h = roi
+	dst = dst[y:y+h, x:x+w]
+	cv2.imwrite('img.png', dst)
+
 # Print matrix and distortion coefficient to the console
 print("Camera intrinsic parameters matrix:\n{}".format(cameraMatrix))
 print("\nCamera distortion coefficients:\n{}".format(distCoeffs))
